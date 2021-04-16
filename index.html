@@ -31,14 +31,14 @@
             </div>
             <div class="product-info">
                 <h1>{{title}}</h1>
-                <p v-if="inStock">In Stock</p>
+                <p v-if="inStock">In Stock: {{inStock}}</p>
                 <p v-else>Out of Stock</p>
                 <span class="tab" :class="{activeTab: selectedTab === tab}"
                   v-for="(tab, index) of tabs" :key="index" v-on:click="selectedTab = tab">{{tab}}</span><br>
                  <span v-if="selectedTab == 'Shipping'"> {{shipping}}</span>
                 <product-details v-if="selectedTab == 'Product Details'" v-bind:details="details"></product-details>
                 <div v-for="(variant, index) of variants" v-bind:key="variant.variantId" class="color-box"
-                    v-bind:style="{backgroundColor: variant.variantColor}" v-on:mouseover='showSocksColor(index)'>
+                    v-bind:style="{backgroundColor: variant.variantColor}" v-on:click='showSocksColor(index)'>
                 </div>
                 <button v-on:click="addToCart" v-bind:class="{disabledButton : !inStock}">Add to Cart</button>
                 <button v-on:click="removeFromCart">Remove from Cart</button>
@@ -72,7 +72,10 @@
         },
         methods: {
             addToCart() {
-                this.$emit('update-cart', 'add', this.variants[this.variantIndex].variantId);
+                if (this.variants[this.variantIndex].variantQuantity) {
+                    this.variants[this.variantIndex].variantQuantity -= 1;
+                    this.$emit('update-cart', 'add', this.variants[this.variantIndex].variantId);
+                }
             },
             removeFromCart() {
                 this.$emit('update-cart', 'remove', this.variants[this.variantIndex].variantId);
@@ -98,6 +101,11 @@
                     return '$2.99'
                 }
             }
+        },
+        mounted() {
+            eventBus.$on('cart-values', (item) => {
+                this.variants[this.variantIndex].variantQuantity += 1;
+            });
         }
     });
     Vue.component('product-details', {
@@ -241,14 +249,12 @@
         methods: {
             updateCart(action, id) {
                 if (action == 'add') {
-                    //this.cart += 1;
                     this.cart.push(id)
-                    console.log('added', this.cart);
                 } else if (action == 'remove') {
-                    for (var i = this.cart.length; i >= 0; i--) {
-                        if (this.cart[i] == id) {
-                            this.cart.splice(i, 1);
-                        }
+                    removeItem = this.cart.indexOf(id);
+                    if (removeItem > -1) {
+                        this.cart.splice(removeItem, 1);
+                        eventBus.$emit('cart-values', id);
                     }
                 }
             }
